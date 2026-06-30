@@ -1,7 +1,6 @@
 default:
   options:
     gfxbackend: gl
-    video_threaded: true
     # menu retroarch
     retroarch.menu_driver: ozone
     retroarch.menu_scale_factor: "1.500000"

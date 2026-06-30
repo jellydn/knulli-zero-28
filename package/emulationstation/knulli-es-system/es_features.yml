@@ -4379,6 +4379,21 @@ libretro:
                     "2560x1440": 2560x1440
                     "3840x2160": 3840x2160
                     "7680x4320": 7680x4320
+            mupen64plus-crop-overscan:
+                prompt:      CROP OVERSCAN
+                description: Crops the edges of the output image to hide overscan borders.
+                choices:
+                    "Off (Default)":    0
+                    "2px":              2
+                    "4px":              4
+                    "6px":              6
+                    "8px":              8
+                    "10px":             10
+                    "12px":             12
+                    "14px":             14
+                    "16px":             16
+                    "18px":             18
+                    "20px":             20
             mupen64plus-next-autowidescreen:
                 prompt:      AUTO WIDESCREEN
                 description: Automatically sets aspect ratio to 16/9 for games that natively support it. 2D elements like HUD/UI may be stretched.
@@ -4954,6 +4969,14 @@ libretro:
                     "Rice":      rice
                     "Angrylion": angrylion
                     "Parallel":  parallel
+            parallel-n64-gfxplugin-accuracy:
+                prompt: GRAPHICS ACCURACY
+                description: Lower accuracy may improve performance but can introduce visual glitches in some games.
+                choices:
+                    "Very High (Default)":  veryhigh
+                    "High":                 high
+                    "Medium":               medium
+                    "Low":                  low
             parallel-n64-screensize:
                 prompt:      RENDERING RESOLUTION
                 description: Enhancement. Increase the rendering resolution. Makes 3D objects clearer.
