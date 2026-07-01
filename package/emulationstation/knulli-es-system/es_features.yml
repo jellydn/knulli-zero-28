@@ -12810,19 +12810,42 @@ gzdoom:
   shared: [powermode, tdp, videomode, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo]
   features: [padtokeyboard]
   cfeatures:
-    gz_joystick:
-      prompt: USE GZDOOM JOYSTICK CONFIGURATION
-      description: Configuring controllers in GZDoom can cause problems.
-      choices:
-        "Disabled (Default)": "false"
-        "Enabled":            "true"
     gz_api:
       prompt: GRAPHICS API
       description: Choose which graphics API library to use.
       choices:
         "OpenGL (Default)": 0
         "Vulkan":           1
-
+    gz_vsync:
+      prompt: VSYNC
+      description: Fix screen tearing. With Some games you need to turn VSync on in the games options.
+      choices:
+        "Disabled (Default)":   "false"
+        "Enabled":              "true"
+    gz_ui_scale:
+      prompt: UI SIZE
+      choices:
+        "Automatic":        0
+        "Small":            1
+        "Medium (Default)": 2
+        "Large":            3
+    gz_look_sensitivity_h:
+      group: CONTROLS
+      prompt: HORIZONTOL LOOK SENSITIVITY
+      description: Determines the horizontol look sensitivity.
+      preset: sliderauto
+      preset-parameters: 0.10 4.00 0.10
+    gz_look_sensitivity_v:
+      group: CONTROLS
+      prompt: VERTICAL LOOK SENSITIVITY
+      description: Determines the vertical look sensitivity.
+      preset: sliderauto
+      preset-parameters: 0.10 4.00 0.10
+    gz_look_invert_y:
+      group: CONTROLS
+      prompt: INVERT LOOK
+      description: Inverts the vertical look axis.
+      preset: switchauto
 corsixth:
   shared: [powermode, tdp, videomode]
   features: [padtokeyboard]
