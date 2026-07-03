@@ -131,6 +131,9 @@ case "${ACTION}" in
                                 amixer -c 0 sset "Playback Path" "HP"
                             fi
 
+                            # Sets DAC volume to max (for some reason it rejects 100%/255)
+                            amixer -c 0 sset 'DAC' 252
+
                             # Needed for audio resume after suspend
                             amixer -c 0 sset 'Resume Path' 'ON'
                             LANG=C pactl set-default-sink "${MODE}" || exit 1
