@@ -3,11 +3,12 @@ from __future__ import annotations
 import collections
 import re
 import shlex
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from ... import Command
-from ...batoceraPaths import KNULLI_SHARE_DIR, CONFIGS, LOGS, mkdir_if_not_exists
+from ...batoceraPaths import KNULLI_SHARE_DIR, CONFIGS, LOGS, ES_SETTINGS, mkdir_if_not_exists
 from ...controller import generate_sdl_game_controller_config
 from ..Generator import Generator
 
@@ -19,6 +20,112 @@ _INI_FILE: Final = _CONFIG_DIR / "gzdoom.ini"
 _SCRIPT_FILE: Final = _CONFIG_DIR / "gzdoom.cfg"
 _FM_BANKS_DIR: Final = _CONFIG_DIR / "fm_banks"
 _SOUND_FONTS_DIR: Final = _CONFIG_DIR / "soundfonts"
+
+_CONTROLLER_BINDING_RE: Final = re.compile(
+    r"^(Joy\d+|Axis\d+(?:Plus|Minus)?|DPad\w+|POV\d+\w+|Pad_\w+|[LR](?:Thumb|Shoulder|Trigger))\s*="
+)
+
+GZDOOM_CVAR_SECTIONS: Final = (
+    "[Doom.ConsoleVariables]",
+    "[Heretic.ConsoleVariables]",
+    "[Hexen.ConsoleVariables]",
+    "[Strife.ConsoleVariables]",
+    "[Chex.ConsoleVariables]",
+)
+
+DEFAULT_BINDINGS: Final = {
+    "1": "slot 1", "2": "slot 2", "3": "slot 3", "4": "slot 4", "5": "slot 5",
+    "6": "slot 6", "7": "slot 7", "8": "slot 8", "9": "slot 9", "0": "slot 0",
+    "W": "+forward", "S": "+back", "A": "+moveleft", "D": "+moveright", "E": "+use",
+    "T": "messagemode", "LeftBracket": "invprev", "RightBracket": "invnext",
+    "Enter": "invuse", "Shift": "+speed", "X": "crouch", "Space": "+jump",
+    "Tab": "togglemap", "`": "toggleconsole", "\\": "+showscores", "CapsLock": "toggle cl_run",
+    "F1": "menu_help", "F2": "menu_save", "F3": "menu_load", "F4": "menu_options",
+    "F5": "menu_display", "F6": "quicksave", "F7": "menu_endgame", "F8": "togglemessages",
+    "F9": "quickload", "F10": "menu_quit", "F11": "bumpgamma", "F12": "spynext",
+    "SysRq": "screenshot", "Pause": "pause", "Home": "land", "PgUp": "+moveup",
+    "End": "centerview", "PgDn": "+lookup", "Ins": "+movedown", "Del": "+lookdown",
+    "Mouse1": "+attack", "Mouse2": "+altattack", "MWheelUp": "weapprev",
+    "MWheelDown": "weapnext", "MWheelRight": "invnext", "MWheelLeft": "invprev",
+}
+
+DEFAULT_AUTOMAP_BINDINGS: Final = {
+    "0": "am_gobig", "=": "+am_zoomin", "-": "+am_zoomout",
+    "P": "am_toggletexture", "F": "am_togglefollow", "G": "am_togglegrid",
+    "C": "am_clearmarks", "M": "am_setmark",
+    "KP-": "+am_zoomout", "KP+": "+am_zoomin",
+    "UpArrow": "+am_panup", "LeftArrow": "+am_panleft",
+    "RightArrow": "+am_panright", "DownArrow": "+am_pandown",
+    "MWheelUp": "am_zoom 1.2", "MWheelDown": "am_zoom -1.2",
+}
+
+GZDOOM_JOY_BINDINGS_CLASSIC: Final = {
+    "a": "+use",
+    "b": "+attack",
+    "x": "turn180",
+    "y": "toggle cl_run",
+    "pageup": "weapprev",
+    "pagedown": "weapnext",
+    "l2": "+strafe",
+    "r2": "+attack",
+    "start": "menu_main",
+    "select": "togglemap",
+}
+
+GZDOOM_JOY_BINDINGS_MODERN: Final = {
+    "a": "+use",
+    "b": "+jump",
+    "y": "reload",
+    "x": "grenadetoss",
+    "pageup": "weapprev",
+    "pagedown": "weapnext",
+    "l2": "+altattack",
+    "r2": "+attack",
+    "l3": "crouch",
+    "r3": "kickem",
+    "start": "menu_main",
+    "select": "togglemap",
+}
+
+GZDOOM_AXIS_MAP_CLASSIC: Final = {
+    "joystick1left": {"map": 0, "scale": "1"},  # turn
+    "joystick1up":   {"map": 2, "scale": "1"},  # forward/back
+}
+
+GZDOOM_AXIS_MAP_MODERN_DUAL: Final = {
+    "joystick1left": {"map": 3, "scale": "1"},  # strafe
+    "joystick1up":   {"map": 2, "scale": "1"},  # forward/back
+    "joystick2left": {"map": 0, "scale": "1"},  # turn
+    "joystick2up":   {"map": 1, "scale": "1"},  # look
+}
+
+GZDOOM_AXIS_MAP_MODERN_SINGLE: Final = {
+    "joystick1left": {"map": 0, "scale": "1"},  # turn
+    "joystick1up":   {"map": 2, "scale": "1"},  # forward/back
+}
+
+GZDOOM_DPAD_BINDINGS: Final = {
+    "up":    {"suffix": "Up",    "doom": "centerview", "automap": "+am_panup"},
+    "down":  {"suffix": "Down",  "doom": "invuse",     "automap": "+am_pandown"},
+    "left":  {"suffix": "Left",  "doom": "invprev",    "automap": "+am_panleft"},
+    "right": {"suffix": "Right", "doom": "invnext",    "automap": "+am_panright"},
+}
+
+GZDOOM_DPAD_BINDINGS_MODERN: Final = {
+    "up":    {"suffix": "Up",    "doom": "flashlightswitch", "automap": "+am_panup"},
+    "down":  {"suffix": "Down",  "doom": "dual",             "automap": "+am_pandown"},
+    "left":  {"suffix": "Left",  "doom": "invuse",           "automap": "+am_panleft"},
+    "right": {"suffix": "Right", "doom": "invnext",          "automap": "+am_panright"},
+}
+
+GZDOOM_JOY_AUTOMAP_BINDINGS: Final = {
+    "a":        "am_setmark",
+    "b":        "am_clearmarks",
+    "x":        "am_togglefollow",
+    "y":        "am_togglegrid",
+    "pageup":   "+am_zoomout",
+    "pagedown": "+am_zoomin",
+}
 
 class IniFileEditor:
 
@@ -88,6 +195,16 @@ class GZDoomGenerator(Generator):
             "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"], "save_store": "KEY_F6", "restore_store": "KEY_F9" }
         }
 
+    # Return value for es invert buttons
+    def _get_es_invert_buttons(self) -> bool:
+        try:
+            tree = ET.parse(ES_SETTINGS)
+            root = tree.getroot()
+            elem = root.find(".//bool[@name='InvertButtons']")
+            return elem is not None and elem.get("value") == "true"
+        except Exception:
+            return False
+
     def _determine_api_config(self, system) -> str:
         gzdoom_api = system.config.get("gz_api", "0")
         arch_path = KNULLI_SHARE_DIR / "knulli.arch"
@@ -117,151 +234,161 @@ class GZDoomGenerator(Generator):
         )
         _SCRIPT_FILE.write_text(content, encoding="utf-8")
 
-    def _update_ini_file(self, system, rom: Path, playersControllers) -> None:
-        ini = IniFileEditor(_INI_FILE)
+    def _clear_generated_input_bindings(self, ini: IniFileEditor) -> None:
+        for section in ("[Doom.Bindings]", "[Doom.AutomapBindings]"):
+            ini.sections[section] = [
+                line for line in ini.sections[section]
+                if not _CONTROLLER_BINDING_RE.match(line.strip())
+            ]
 
-        DEFAULT_BINDINGS = {
-            "1": "slot 1", "2": "slot 2", "3": "slot 3", "4": "slot 4", "5": "slot 5",
-            "6": "slot 6", "7": "slot 7", "8": "slot 8", "9": "slot 9", "0": "slot 0",
-            "W": "+forward", "S": "+back", "A": "+moveleft", "D": "+moveright", "E": "+use",
-            "T": "messagemode", "LeftBracket": "invprev", "RightBracket": "invnext",
-            "Enter": "invuse", "Shift": "+speed", "X": "crouch", "Space": "+jump",
-            "Tab": "togglemap", "`": "toggleconsole", "\\": "+showscores", "CapsLock": "toggle cl_run",
-            "F1": "menu_help", "F2": "menu_save", "F3": "menu_load", "F4": "menu_options",
-            "F5": "menu_display", "F6": "quicksave", "F7": "menu_endgame", "F8": "togglemessages",
-            "F9": "quickload", "F10": "menu_quit", "F11": "bumpgamma", "F12": "spynext",
-            "SysRq": "screenshot", "Pause": "pause", "Home": "land", "PgUp": "+moveup",
-            "End": "centerview", "PgDn": "+lookup", "Ins": "+movedown", "Del": "+lookdown",
-            "Mouse1": "+attack", "Mouse2": "+altattack", "MWheelUp": "weapprev",
-            "MWheelDown": "weapnext", "MWheelRight": "invnext", "MWheelLeft": "invprev",
+        ini.sections["[GlobalSettings]"] = [
+            line for line in ini.sections["[GlobalSettings]"]
+            if not line.strip().startswith(("menu_confirm=", "menu_back="))
+        ]
+
+    def _copy_axis_map_with_sensitivity(self, system, axis_template: dict) -> dict:
+        axis_map = {
+            name: dict(mapping)
+            for name, mapping in axis_template.items()
         }
 
-        DEFAULT_AUTOMAP_BINDINGS = {
-            "0": "am_gobig", "=": "+am_zoomin", "-": "+am_zoomout",
-            "P": "am_toggletexture", "F": "am_togglefollow", "G": "am_togglegrid",
-            "C": "am_clearmarks", "M": "am_setmark",
-            "KP-": "+am_zoomout", "KP+": "+am_zoomin",
-            "UpArrow": "+am_panup", "LeftArrow": "+am_panleft",
-            "RightArrow": "+am_panright", "DownArrow": "+am_pandown",
-            "MWheelUp": "am_zoom 1.2", "MWheelDown": "am_zoom -1.2",
-        }
-
-        GZDOOM_JOY_BINDINGS = {
-            "b": "+jump",
-            "a": "+use",
-            "y": "reload",
-            "x": "turn180",
-            "pageup": "weapprev",
-            "pagedown": "weapnext",
-            "l2": "+altattack",
-            "r2": "+attack",
-            "l3": "toggle cl_run",
-            "r3": "crouch",
-            "start": "menu_main",
-            "select": "togglemap",
-        }
-
-        # Get look sensitivity settings
-        set_gz_look_sensitivity_h = system.config.get("gz_look_sensitivity_h", "1.00")
-        set_gz_look_sensitivity_v = system.config.get("gz_look_sensitivity_v", "0.25")
+        look_h = system.config.get("gz_look_sensitivity_h", "0.90")
+        look_v = system.config.get("gz_look_sensitivity_v", "0.25")
 
         if system.getOptBoolean("gz_look_invert_y"):
-            set_gz_look_sensitivity_v = f"-{set_gz_look_sensitivity_v}"
+            look_v = f"-{look_v}"
 
-        first_pad = next(iter(playersControllers.values()), None)
-        input_names = {
-            inp.name
-            for inp in first_pad.inputs.values()
-        } if first_pad is not None else set()
+        for mapping in axis_map.values():
+            if mapping["map"] == 0:  # turn
+                mapping["scale"] = look_h
+            elif mapping["map"] == 1:  # look up/down
+                mapping["scale"] = look_v
 
-        has_left_stick = {
-            "joystick1left",
-            "joystick1up",
-        }.issubset(input_names)
+        return axis_map
 
-        has_right_stick = {
-            "joystick2left",
-            "joystick2up",
-        }.issubset(input_names)
+    def _apply_controller_bindings(
+        self,
+        ini: IniFileEditor,
+        system,
+        playersControllers,
+        modern_input: bool,
+        confirm_button: str,
+        back_button: str,
+    ) -> None:
+        # GZDoom's internal joystick handler for controllers is not dynamic.
+        # We need to set the Joy values for controllers i.e. Joy1=+use Joy4=+jump etc.
+        for n, pad in enumerate(playersControllers.values()):
+            if n != 0:
+                ini.set_value(f"[Joy:JS:{n}]", "Enabled", "0")
+                continue
 
-        has_dual_stick = has_left_stick and has_right_stick
+            ini.set_value(f"[Joy:JS:{n}]", "Enabled", "1")
 
-        GZDOOM_AXIS_MAP_DUAL_STICK = {
-            "joystick1left": {"map": 3, "scale": "1"},  # strafe
-            "joystick1up":   {"map": 2, "scale": "1"},  # forward/back
-            "joystick2left": {"map": 0, "scale": set_gz_look_sensitivity_h},  # turn
-            "joystick2up":   {"map": 1, "scale": set_gz_look_sensitivity_v},  # look
-        }
+            has_left_stick = any(
+                inp.type == "axis" and inp.name in ("joystick1left", "joystick1up")
+                for inp in pad.inputs.values()
+            )
 
-        GZDOOM_AXIS_MAP_SINGLE_STICK = {
-            "joystick1left": {"map": 0, "scale": set_gz_look_sensitivity_h},  # turn
-            "joystick1up":   {"map": 2, "scale": "1"},  # forward/back
-        }
+            has_right_stick = any(
+                inp.type == "axis" and inp.name in ("joystick2left", "joystick2up")
+                for inp in pad.inputs.values()
+            )
 
-        GZDOOM_AXIS_MAP = {}
+            dual_stick = has_left_stick and has_right_stick
 
-        if has_dual_stick:
-            GZDOOM_AXIS_MAP = GZDOOM_AXIS_MAP_DUAL_STICK
-        elif has_left_stick:
-            GZDOOM_AXIS_MAP = GZDOOM_AXIS_MAP_SINGLE_STICK
+            if modern_input:
+                joy_bindings = dict(GZDOOM_JOY_BINDINGS_MODERN)
+                dpad_bindings = GZDOOM_DPAD_BINDINGS_MODERN
 
-        GZDOOM_DPAD_BINDINGS = {
-            "up": {
-                "suffix": "Up",
-                "doom": "centerview",
-                "automap": "+am_panup",
-            },
-            "down": {
-                "suffix": "Down",
-                "doom": "invuse",
-                "automap": "+am_pandown",
-            },
-            "left": {
-                "suffix": "Left",
-                "doom": "invprev",
-                "automap": "+am_panleft",
-            },
-            "right": {
-                "suffix": "Right",
-                "doom": "invnext",
-                "automap": "+am_panright",
-            },
-        }
+                if dual_stick:
+                    axis_template = GZDOOM_AXIS_MAP_MODERN_DUAL
+                else:
+                    axis_template = GZDOOM_AXIS_MAP_MODERN_SINGLE
+                    joy_bindings["l2"] = "+strafe"
+            else:
+                joy_bindings = GZDOOM_JOY_BINDINGS_CLASSIC
+                dpad_bindings = GZDOOM_DPAD_BINDINGS
+                axis_template = GZDOOM_AXIS_MAP_CLASSIC
 
-        GZDOOM_DPAD_BINDINGS_MOVEMENT = {
-            "up": {
-                "suffix": "Up",
-                "doom": "+forward",
-                "automap": "+am_panup",
-            },
-            "down": {
-                "suffix": "Down",
-                "doom": "+back",
-                "automap": "+am_pandown",
-            },
-            "left": {
-                "suffix": "Left",
-                "doom": "+left",
-                "automap": "+am_panleft",
-            },
-            "right": {
-                "suffix": "Right",
-                "doom": "+right",
-                "automap": "+am_panright",
-            },
-        }
+            axis_map = self._copy_axis_map_with_sensitivity(system, axis_template)
 
-        if not has_left_stick:
-            GZDOOM_DPAD_BINDINGS = GZDOOM_DPAD_BINDINGS_MOVEMENT
+            for inp in pad.inputs.values():
+                if inp.type == "button":
+                    joynum = int(inp.id) + 1
 
-        GZDOOM_JOY_AUTOMAP_BINDINGS = {
-            "a": "am_setmark",
-            "b": "am_clearmarks",
-            "x": "am_togglefollow",
-            "y": "am_togglegrid",
-            "pageup": "+am_zoomout",
-            "pagedown": "+am_zoomin",
-        }
+                    # For menu navigation
+                    if inp.name == confirm_button:
+                        ini.set_value("[GlobalSettings]", "menu_confirm", f"Joy{joynum}")
+                    elif inp.name == back_button:
+                        ini.set_value("[GlobalSettings]", "menu_back", f"Joy{joynum}")
+
+                    if inp.name in joy_bindings:
+                        ini.set_value(
+                            "[Doom.Bindings]",
+                            f"Joy{joynum}",
+                            joy_bindings[inp.name],
+                        )
+
+                    if inp.name in GZDOOM_JOY_AUTOMAP_BINDINGS:
+                        ini.set_value(
+                            "[Doom.AutomapBindings]",
+                            f"Joy{joynum}",
+                            GZDOOM_JOY_AUTOMAP_BINDINGS[inp.name],
+                        )
+
+                    # Some controllers dpad are buttons instead of hat
+                    if inp.name in dpad_bindings:
+                        binding = dpad_bindings[inp.name]
+
+                        ini.set_value(
+                            "[Doom.Bindings]",
+                            f"Joy{joynum}",
+                            binding["doom"],
+                        )
+                        ini.set_value(
+                            "[Doom.AutomapBindings]",
+                            f"Joy{joynum}",
+                            binding["automap"],
+                        )
+
+                elif inp.type == "hat" and inp.name in dpad_bindings:
+                    binding = dpad_bindings[inp.name]
+                    hatnum = int(inp.id) + 1
+                    suffix = binding["suffix"]
+
+                    ini.set_value(
+                        "[Doom.Bindings]",
+                        f"POV{hatnum}{suffix}",
+                        binding["doom"],
+                    )
+                    ini.set_value(
+                        "[Doom.AutomapBindings]",
+                        f"POV{hatnum}{suffix}",
+                        binding["automap"],
+                    )
+
+                    if hatnum == 1:
+                        ini.set_value(
+                            "[Doom.Bindings]",
+                            f"DPad{suffix}",
+                            binding["doom"],
+                        )
+                        ini.set_value(
+                            "[Doom.AutomapBindings]",
+                            f"DPad{suffix}",
+                            binding["automap"],
+                        )
+
+                elif inp.type == "axis" and inp.name in axis_map:
+                    mapping = axis_map[inp.name]
+                    axisnum = int(inp.id)
+
+                    ini.set_value("[Joy:JS:0]", f"Axis{axisnum}deadzone", "0.25")
+                    ini.set_value("[Joy:JS:0]", f"Axis{axisnum}scale", mapping["scale"])
+                    ini.set_value("[Joy:JS:0]", f"Axis{axisnum}map", str(mapping["map"]))
+
+    def _update_ini_file(self, system, rom: Path, playersControllers) -> None:
+        ini = IniFileEditor(_INI_FILE)
 
         # Add ROM path to search directories
         rom_path_line = f"Path={rom.parent}"
@@ -279,21 +406,49 @@ class GZDoomGenerator(Generator):
             ini.add_line_if_missing("[SoundfontSearch.Directories]", path_line)
 
         # ES Settings
-        set_gz_vsync = system.config.get("gz_vsync", "false")
-        set_gz_maxfps = system.config.get("gz_maxfps", "60")
-        set_gz_capfps = system.config.get("gz_capfps", "true")
-        set_gz_ui_scale = system.config.get("gz_ui_scale", "2")
-
-        ini.set_value("[GlobalSettings]", "vid_vsync", set_gz_vsync)
-        ini.set_value("[GlobalSettings]", "vid_maxfps", set_gz_maxfps)
-        ini.set_value("[GlobalSettings]", "cl_capfps", set_gz_capfps)
-        ini.set_value("[Doom.ConsoleVariables]", "uiscale", set_gz_ui_scale)
-        ini.set_value("[Doom.ConsoleVariables]", "screenblocks", "11")
-        ini.set_value("[Doom.ConsoleVariables]", "saved_screenblocks", "11")
         # Set joystick option
         ini.set_value("[GlobalSettings]", "use_joystick", "true")
 
-        # Default all axes to disabled. Valid axis are set below.
+        # Input Mode
+        gz_input_mode = system.config.get("gz_input_mode", "modern")
+        modern_input = gz_input_mode == "modern"
+
+        # Video sync
+        set_gz_vsync = system.config.get("gz_vsync", "false")
+        ini.set_value("[GlobalSettings]", "vid_vsync", set_gz_vsync)
+
+        # FPS mode
+        gz_fps_mode = system.config.get("gz_fps_mode", "classic")
+        ini.set_value("[GlobalSettings]", "cl_capfps", "false" if gz_fps_mode == "smooth" else "true")
+        ini.set_value("[GlobalSettings]", "vid_maxfps", "60")
+
+        # Texture Filtering
+        set_gz_texture_filter = system.config.get("gz_texture_filter", "5")
+        ini.set_value("[GlobalSettings]", "gl_texture_filter", set_gz_texture_filter)
+
+        # Anisotropic filtering
+        set_gz_texture_filter_anisotropic = system.config.get("gz_anisotropic", "8")
+        ini.set_value("[GlobalSettings]", "gl_texture_filter_anisotropic", set_gz_texture_filter_anisotropic)
+
+        # Sprite shadows
+        set_gz_sprite_shadows = system.config.get("gz_sprite_shadows", "1")
+        ini.set_value("[GlobalSettings]", "r_actorspriteshadow", set_gz_sprite_shadows)
+
+        # UI
+        # Mode
+        set_gz_ui_mode = system.config.get("gz_ui_mode", "10")
+        # Scale
+        set_gz_ui_scale = system.config.get("gz_ui_scale", "2")
+        set_gz_message_scale = "0" if set_gz_ui_scale == "0" else str(int(set_gz_ui_scale) + 1)
+
+        for section in GZDOOM_CVAR_SECTIONS:
+            ini.set_value(section, "uiscale", set_gz_ui_scale)
+            ini.set_value(section, "con_scaletext", set_gz_message_scale)
+            ini.set_value(section, "screenblocks", set_gz_ui_mode)
+            ini.set_value(section, "saved_screenblocks", set_gz_ui_mode)
+            ini.set_value(section, "cl_run", "true")  # autorun
+
+        # Default all axes to disabled. ES determined axes are enabled/mapped below.
         for axis in range(0, 6):
             ini.set_value("[Joy:JS:0]", f"Axis{axis}deadzone", "1.0")
             ini.set_value("[Joy:JS:0]", f"Axis{axis}scale", "1")
@@ -306,97 +461,24 @@ class GZDoomGenerator(Generator):
             ini.set_value_if_missing("[Doom.AutomapBindings]", key, value)
 
         # 2. Set/Overwrite dynamic controller bindings
-        # First, clear any existing Joy#, Axis#, DPad/POV, etc bindings to prevent conflicts from previous runs.
-        controller_binding_re = re.compile(
-            r"(Joy\d+|Axis\d+(Plus|Minus)?|DPad\w+|POV\d+\w+|Pad_\w+|[LR](Thumb|Shoulder|Trigger))\s*="
+        self._clear_generated_input_bindings(ini)
+
+        # Match ES confirm/back buttons.
+        if self._get_es_invert_buttons():
+            confirm_button = "a"
+            back_button = "b"
+        else:
+            confirm_button = "b"
+            back_button = "a"
+
+        self._apply_controller_bindings(
+            ini,
+            system,
+            playersControllers,
+            modern_input,
+            confirm_button,
+            back_button,
         )
-
-        ini.sections["[Doom.Bindings]"] = [
-            line for line in ini.sections["[Doom.Bindings]"]
-            if not controller_binding_re.match(line.strip())
-        ]
-
-        ini.sections["[Doom.AutomapBindings]"] = [
-            line for line in ini.sections["[Doom.AutomapBindings]"]
-            if not controller_binding_re.match(line.strip())
-        ]
-
-        # GZDoom's internal joystick handler for controllers is not dynamic
-        # We need to set the Joy values for controllers i.e. Joy1=+use Joy4=+jump etc
-        for n, pad in enumerate(playersControllers.values()):
-            if n == 0:
-                ini.set_value(f"[Joy:JS:{n}]", "Enabled", "1")
-
-                for inp in pad.inputs.values():
-                    if inp.type == "button":
-                        joynum = int(inp.id) + 1
-
-                        if inp.name in GZDOOM_JOY_BINDINGS:
-                            ini.set_value(
-                                "[Doom.Bindings]",
-                                f"Joy{joynum}",
-                                GZDOOM_JOY_BINDINGS[inp.name],
-                            )
-
-                        if inp.name in GZDOOM_JOY_AUTOMAP_BINDINGS:
-                            ini.set_value(
-                                "[Doom.AutomapBindings]",
-                                f"Joy{joynum}",
-                                GZDOOM_JOY_AUTOMAP_BINDINGS[inp.name],
-                            )
-
-                        # Some controllers dpad are buttons instead of hat
-                        if inp.name in GZDOOM_DPAD_BINDINGS:
-                            binding = GZDOOM_DPAD_BINDINGS[inp.name]
-
-                            ini.set_value(
-                                "[Doom.Bindings]",
-                                f"Joy{joynum}",
-                                binding["doom"],
-                            )
-                            ini.set_value(
-                                "[Doom.AutomapBindings]",
-                                f"Joy{joynum}",
-                                binding["automap"],
-                            )
-
-                    elif inp.type == "hat" and inp.name in GZDOOM_DPAD_BINDINGS:
-                        binding = GZDOOM_DPAD_BINDINGS[inp.name]
-                        hatnum = int(inp.id) + 1
-                        suffix = binding["suffix"]
-
-                        ini.set_value(
-                            "[Doom.Bindings]",
-                            f"POV{hatnum}{suffix}",
-                            binding["doom"],
-                        )
-                        ini.set_value(
-                            "[Doom.AutomapBindings]",
-                            f"POV{hatnum}{suffix}",
-                            binding["automap"],
-                        )
-
-                        if hatnum == 1:
-                            ini.set_value(
-                                "[Doom.Bindings]",
-                                f"DPad{suffix}",
-                                binding["doom"],
-                            )
-                            ini.set_value(
-                                "[Doom.AutomapBindings]",
-                                f"DPad{suffix}",
-                                binding["automap"],
-                            )
-
-                    elif inp.type == "axis" and inp.name in GZDOOM_AXIS_MAP:
-                        mapping = GZDOOM_AXIS_MAP[inp.name]
-                        axisnum = int(inp.id)
-
-                        ini.set_value("[Joy:JS:0]", f"Axis{axisnum}deadzone", "0.25")
-                        ini.set_value("[Joy:JS:0]", f"Axis{axisnum}scale", mapping["scale"])
-                        ini.set_value("[Joy:JS:0]", f"Axis{axisnum}map", str(mapping["map"]))
-            else:
-                ini.set_value(f"[Joy:JS:{n}]", "Enabled", "0")
 
         ini.write()
 

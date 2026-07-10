@@ -12811,37 +12811,94 @@ gzdoom:
   features: [padtokeyboard]
   cfeatures:
     gz_api:
+      submenu: Rendering
       prompt: GRAPHICS API
       description: Choose which graphics API library to use.
       choices:
         "OpenGL (Default)": 0
         "Vulkan":           1
+    gz_texture_filter:
+      submenu: Rendering
+      prompt: TEXTURE FILTERING
+      description: Determines the type of filtering applied to textures.
+      choices:
+        "None": 0
+        "None (Nearest Mipmap)": 1
+        "None (Linear Mipmap) (Default)": 5
+        "None (Trilinear)": 6
+        "Linear": 2
+        "Bilinear": 3
+        "Trilinear": 4
+    gz_anisotropic:
+      submenu: Rendering
+      prompt: ANISOTROPIC FILTERING
+      description: Improves clarity of distant textures.
+      choices:
+        "Off": 1
+        "2x": 2
+        "4x": 4
+        "8x (Default)": 8
+        "16x": 16
+    gz_sprite_shadows:
+      submenu: Rendering
+      prompt: SPRITE SHADOWS
+      description: Enables simple actor sprite shadows. More shadows can reduce performance.
+      choices:
+        "Off": 0
+        "Default": 1
+        "Monsters and Players": 2
     gz_vsync:
+      submenu: Video
       prompt: VSYNC
       description: Fix screen tearing. With Some games you need to turn VSync on in the games options.
       choices:
         "Disabled (Default)":   "false"
         "Enabled":              "true"
+    gz_fps_mode:
+      submenu: Video
+      prompt: FPS MODE
+      description: The original Doom engine runs at 35 FPS, but GZDoom can interpolate to 60 FPS for smoother gameplay.
+      choices:
+        "Classic 35 FPS": classic
+        "Smooth 60 FPS": smooth
+    gz_ui_mode:
+      submenu: Video
+      prompt: HUD MODE
+      choices:
+        "Classic (Default)": 10
+        "Full Screen":       11
     gz_ui_scale:
+      submenu: Video
       prompt: UI SIZE
       choices:
         "Automatic":        0
         "Small":            1
         "Medium (Default)": 2
         "Large":            3
-    gz_look_sensitivity_h:
+    gz_input_mode:
+      submenu: PLAYER CONTROLS
       group: CONTROLS
-      prompt: HORIZONTOL LOOK SENSITIVITY
-      description: Determines the horizontol look sensitivity.
+      prompt: INPUT MODE
+      description: Configures inputs based on mode and number of joysticks.
+      choices:
+        "Classic": "classic"
+        "Modern": "modern"
+    gz_look_sensitivity_h:
+      submenu: PLAYER CONTROLS
+      group: CONTROLS
+      prompt: HORIZONTAL LOOK SENSITIVITY
+      description: Determines the horizontal look sensitivity.
       preset: sliderauto
       preset-parameters: 0.10 4.00 0.10
     gz_look_sensitivity_v:
+      submenu: PLAYER CONTROLS
       group: CONTROLS
       prompt: VERTICAL LOOK SENSITIVITY
       description: Determines the vertical look sensitivity.
       preset: sliderauto
       preset-parameters: 0.10 4.00 0.10
     gz_look_invert_y:
+      submenu: PLAYER CONTROLS
       group: CONTROLS
       prompt: INVERT LOOK
       description: Inverts the vertical look axis.
