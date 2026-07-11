@@ -5,7 +5,7 @@ KNULLI_OVERRIDE_PACKAGES = libretro-flycastvl es-background-musics retroarch-ass
 							retroarch libretro-parallel-n64 libretro-yabasanshiro \
 							common-shaders glsl-shaders slang-shaders batocera-shaders \
 							batocera-triggerhappy azahar zramswap syncthing \
-							libretro-gpsp libretro-melonds-ds dolphin-emu vita3k
+							libretro-gpsp libretro-melonds-ds dolphin-emu vita3k gzdoom
 
 # Knulli packages
 include $(sort $(wildcard $(BR2_EXTERNAL_KNULLI_PATH)/package/audio/*/*.mk \
