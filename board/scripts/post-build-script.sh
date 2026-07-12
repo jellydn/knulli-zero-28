@@ -30,6 +30,13 @@ ln -sf "/usr/share/emulationstation/themes"         "${TARGET_DIR}/etc/emulation
 mkdir -p "${TARGET_DIR}/usr/share/knulli/datainit/cheats" || exit 1
 ln -sf "/userdata/cheats" "${TARGET_DIR}/usr/share/knulli/datainit/cheats/custom" || exit 1
 
+# Needed for the mame 2010 (0.139) since it was removed from batocera.
+LIBRETRO_INFO_DIR="${TARGET_DIR}/usr/share/libretro/info"
+
+if [ -f "${LIBRETRO_INFO_DIR}/mame2010_libretro.info" ]; then
+    ln -sf "mame2010_libretro.info" "${LIBRETRO_INFO_DIR}/mame0139_libretro.info" || exit 1
+fi
+
 ## === REMOVE ===
 # Temp stuff that changes during consecutive builds. Meant to be cleaned/updated as-needed
 rm -f "${TARGET_DIR}/etc/batteryplus/state.d/00batterysaver-chargingbypass" || exit 1
