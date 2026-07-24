@@ -1,7 +1,6 @@
 #!/bin/sh
 
 CYCLESTEP=20 # % additional brightness at each step
-XMIN=3
 VALPATH=/var/run/$(basename "$0") # Stored brightness value when the display is turned off
 LOCK=/var/run/$(basename "$0").lock # Mainly needed because of the dim animation
 
@@ -41,6 +40,10 @@ else
         brightness set "$1"
     }
 fi
+
+# calculate min from max
+XMIN=$(( (XMAX + 99) / 100 ))
+[ "$XMIN" -lt 3 ] && XMIN=3
 
 FB_BLANK=/sys/class/graphics/fb0/blank
 
@@ -229,11 +232,7 @@ then
     elif [ "${1}" = "undim" ]; then
         do_undim
     else
-        if [ "$1" -eq 1 ]; then
-            NEWVAL=$XMIN
-        else
-            NEWVAL=$(( $1 * XMAX / 100 ))
-        fi
+        NEWVAL=$(percent_to_abs "$1")
         setValue "${NEWVAL}"
         exit 0
     fi
