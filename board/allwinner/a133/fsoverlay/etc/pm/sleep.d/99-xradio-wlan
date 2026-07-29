@@ -1,10 +1,15 @@
 #!/bin/bash
 
 BOARD=$(cat /boot/boot/knulli.board)
+
 # We only want the script to run for these devices
-if [ "$BOARD" != "trimui-brick" ] && [ "$BOARD" != "trimui-smart-pro" ]; then
-    exit 1
-fi
+case "$BOARD" in
+    trimui-brick|trimui-brick-pro|trimui-smart-pro)
+        ;;
+    *)
+        exit 0
+        ;;
+esac
 
 case "${1}" in
    suspend)
