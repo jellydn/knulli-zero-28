@@ -38,7 +38,7 @@ do_start () {
         image="/usr/share/knulli/splash/boot-logo-640x480.png"
     fi
 
-    if [ "${V_BOARD_MODEL}" = "Anbernic_RG_ARC" ]; then
+    if [ "${V_BOARD_MODEL}" = "Anbernic_RG_ARC_S" ]; then
         image="/usr/share/knulli/splash/boot-logo-480x640-left.png"
     fi
 
