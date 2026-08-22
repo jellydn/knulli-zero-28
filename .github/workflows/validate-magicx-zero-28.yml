@@ -185,5 +185,14 @@ jobs:
           KC_REF=board/allwinner/a133/trimui-smart-pro/linux-sunxi64-legacy.config
           cmp -s "$KC_Z28" "$KC_REF" || { echo "magicx-zero-28 kernel config drifted from A133 reference"; errors=$((errors+1)); }
 
+          # 13) First-stage bootloader (boot0) + u-boot env parity: these are
+          #     BROM/early-boot binaries that must match the known-good xu20-v32
+          #     reference (same A133 SoC family). A drift here means the device
+          #     never reaches u-boot at all.
+          REFB=board/allwinner/a133/xu20-v32/partitions
+          for part in boot0.img env.img; do
+            cmp -s "$B/partitions/$part" "$REFB/$part" || { echo "$part drifted from xu20-v32 reference"; errors=$((errors+1)); }
+          done
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
