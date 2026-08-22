@@ -124,5 +124,16 @@ jobs:
           dtc -I dts -O dtb -o /tmp/fresh.dtb "$BP/magicx-zero-28.dts" 2>/dev/null
           cmp -s /tmp/fresh.dtb output_blocks/dtb.bin || { echo "boot_package.fex dtb drifted from committed DTS"; errors=$((errors+1)); }
 
+          # 9) Flashed boot.img integrity: the Android boot image
+          #    (partitions/boot.img) must embed the committed boot.img-zImage at
+          #    the Android page boundary (page size from boot.img-pagesize).
+          BOOTIMG="$B/partitions/boot.img"
+          ZIMAGE=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-zImage
+          PAGESIZE=$(cat package/boot/uboot-a133/magicx-zero-28/boot/boot.img-pagesize 2>/dev/null || echo 2048)
+          ZSIZE=$(stat -c%s "$ZIMAGE")
+          KERN=$(dd if="$BOOTIMG" bs=1 skip="$PAGESIZE" count="$ZSIZE" 2>/dev/null)
+          SRC=$(cat "$ZIMAGE")
+          [ "$KERN" = "$SRC" ] || { echo "partitions/boot.img kernel drifted from boot.img-zImage"; errors=$((errors+1)); }
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
