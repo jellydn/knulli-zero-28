@@ -128,15 +128,21 @@ jobs:
           cmp -s /tmp/fresh.dtb output_blocks/dtb.bin || { echo "boot_package.fex dtb drifted from committed DTS"; errors=$((errors+1)); }
 
           # 9) Flashed boot.img integrity: the Android boot image
-          #    (partitions/boot.img) must embed the committed boot.img-zImage at
-          #    the Android page boundary (page size from boot.img-pagesize).
+          #    (partitions/boot.img) must embed the committed boot.img-zImage
+          #    AND boot.img-ramdisk.gz at their Android page-aligned offsets.
           BOOTIMG="$B/partitions/boot.img"
           ZIMAGE=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-zImage
+          RAMDISK=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-ramdisk.gz
           PAGESIZE=$(cat package/boot/uboot-a133/magicx-zero-28/boot/boot.img-pagesize 2>/dev/null || echo 2048)
           ZSIZE=$(stat -c%s "$ZIMAGE")
+          RSIZE=$(stat -c%s "$RAMDISK")
           # File-based comparison (NOT shell vars — command substitution strips NUL).
           dd if="$BOOTIMG" of=/tmp/embedded-zimage.bin bs=1 skip="$PAGESIZE" count="$ZSIZE" status=none
           cmp -s /tmp/embedded-zimage.bin "$ZIMAGE" || { echo "partitions/boot.img kernel drifted from boot.img-zImage"; errors=$((errors+1)); }
+          # ramdisk offset = pagesize + round_up(kernel_size, pagesize)
+          ROFF=$(( PAGESIZE + ( (ZSIZE + PAGESIZE - 1) / PAGESIZE ) * PAGESIZE ))
+          dd if="$BOOTIMG" of=/tmp/embedded-ramdisk.gz bs=1 skip="$ROFF" count="$RSIZE" status=none
+          cmp -s /tmp/embedded-ramdisk.gz "$RAMDISK" || { echo "partitions/boot.img ramdisk drifted from boot.img-ramdisk.gz"; errors=$((errors+1)); }
 
           # 10) Build-pipeline front half: the a133 defconfig must generate
           #     cleanly, select BATOCERA_TARGET_A133, and the single-device
