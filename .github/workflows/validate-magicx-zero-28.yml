@@ -70,5 +70,28 @@ jobs:
             esac
           done < <(sed -n 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$B/genimage.cfg")
 
+          # 5) Boot contract integrity (the A133 boards boot via Android-style
+          #    boot.img = zImage + ramdisk.gz + baked cmdline). Guard the
+          #    magic numbers and the device identity.
+          ZIMAGE=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-zImage
+          RAMDISK=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-ramdisk.gz
+          CMDLINE=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-cmdline
+
+          # zImage must be an arm64 kernel Image (magic "ARMd" at offset 0x38)
+          MAGIC=$(dd if="$ZIMAGE" bs=1 skip=56 count=4 2>/dev/null)
+          [ "$MAGIC" = "ARMd" ] || { echo "boot.img-zImage is not arm64 Image (magic=$MAGIC)"; errors=$((errors+1)); }
+          # ramdisk must be gzip
+          GMAGIC=$(head -c 2 "$RAMDISK" 2>/dev/null)
+          [ "$GMAGIC" = $'\x1f\x8b' ] || { echo "boot.img-ramdisk.gz is not gzip"; errors=$((errors+1)); }
+          # cmdline must target the A133 root partition (mmcblk0p4, like xu20-v32)
+          grep -q 'root=/dev/mmcblk0p4' "$CMDLINE" || { echo "boot.img-cmdline missing root=/dev/mmcblk0p4"; errors=$((errors+1)); }
+
+          # 6) Device identity guard — the panel must remain the Zero 28 640x480
+          #    h028b23 (NOT the Zero 40 RTP40WV101B 480x800 touch panel).
+          DTS=package/boot/uboot-a133/magicx-zero-28/boot_package/magicx-zero-28.dts
+          grep -q 'h028b23' "$DTS" || { echo "panel identity lost (h028b23)"; errors=$((errors+1)); }
+          grep -q 'RTP40WV101B' "$DTS" && { echo "WRONG panel: Zero 40 RTP40WV101B leaked into Zero 28"; errors=$((errors+1)); }
+          grep -q 'cap_touch' "$DTS" && { echo "WRONG: touch panel node present in non-touch Zero 28"; errors=$((errors+1)); }
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
