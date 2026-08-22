@@ -12,7 +12,9 @@ set -uo pipefail
 
 REPO="jellydn/knulli-zero-28"
 WORKFLOW="validate-magicx-zero-28.yml"
-REF="autoresearch/zero28-image-20260822"
+# Dispatch from the default branch, where the workflow file is kept up to date.
+# (Dispatching from a stale feature branch silently runs an old workflow version.)
+REF="knulli-main"
 
 command -v gh >/dev/null 2>&1 || { echo "METRIC validation_ok=0"; echo "gh CLI missing" >&2; exit 0; }
 
