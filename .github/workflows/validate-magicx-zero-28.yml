@@ -170,5 +170,14 @@ jobs:
             | grep -qE '^BR2_TARGET_KNULLI_IMAGES[ ]*=[ ]*".*"[ ]*$' \
             || { echo "EXTRA_OPTS quoting chain broken (produces invalid KNULLI_IMAGES)"; errors=$((errors+1)); }
 
+          # 12) Kernel config parity: the shared A133 build uses the
+          #     trimui-smart-pro linux-sunxi64-legacy.config. The Zero 28 copy
+          #     must match it (a silent drift would change the kernel and break
+          #     boot). GPU is userspace PowerVR GE8300 (package) + DISP2_SUNXI
+          #     framebuffer, not kernel Mali — so config equality is the contract.
+          KC_Z28=board/allwinner/a133/magicx-zero-28/linux-sunxi64-legacy.config
+          KC_REF=board/allwinner/a133/trimui-smart-pro/linux-sunxi64-legacy.config
+          cmp -s "$KC_Z28" "$KC_REF" || { echo "magicx-zero-28 kernel config drifted from A133 reference"; errors=$((errors+1)); }
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
