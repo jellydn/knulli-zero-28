@@ -1,0 +1,74 @@
+name: Validate MagicX Zero 28 port
+
+# Lightweight board-port validation that runs on GitHub-hosted runners.
+# The full 180 GiB image build still requires the self-hosted x64 runner
+# (see build-magicx-zero-28.yml); this workflow catches port regressions
+# that would otherwise only surface after a multi-hour build.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'board/allwinner/a133/magicx-zero-28/**'
+      - 'package/boot/uboot-a133/magicx-zero-28/**'
+  push:
+    paths:
+      - 'board/allwinner/a133/magicx-zero-28/**'
+      - 'package/boot/uboot-a133/magicx-zero-28/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Install device-tree compiler and u-boot tools
+        run: sudo apt-get update && sudo apt-get install -y device-tree-compiler u-boot-tools
+
+      - name: Validate Zero 28 board port
+        run: |
+          set -uo pipefail
+          B=board/allwinner/a133/magicx-zero-28
+          BP=package/boot/uboot-a133/magicx-zero-28/boot_package
+          errors=0
+
+          # 1) DTS compiles with 0 errors (vendor DTS emits cosmetic warnings)
+          dtc -I dts -O dtb -o /tmp/zero28.dtb "$BP/magicx-zero-28.dts" 2>/tmp/dtc.err
+          e=$(grep -c 'Error' /tmp/dtc.err 2>/dev/null || true)
+          echo "DTS errors: $e"
+          errors=$((errors + e))
+
+          # 2) shell scripts + boot.cmd parse
+          while IFS= read -r f; do
+            bash -n "$f" || { echo "SYNTAX FAIL: $f"; errors=$((errors+1)); }
+          done < <(find "$B" \( -name '*.sh' -o -name 'boot.cmd' \) -type f)
+
+          # 3) partition images + boot files exist
+          for img in boot0.img boot.img env.img boot_package.fex; do
+            [ -f "$B/partitions/$img" ] || { echo "MISSING partitions/$img"; errors=$((errors+1)); }
+          done
+          for f in uImage uInitrd bootlogo.bmp knulli-boot.conf; do
+            [ -f "$B/$f" ] || { echo "MISSING $f"; errors=$((errors+1)); }
+          done
+          for f in u-boot.bin monitor.bin scp.bin; do
+            [ -f "$BP/$f" ] || { echo "MISSING boot_package/$f"; errors=$((errors+1)); }
+          done
+
+          # 4) genimage.cfg references resolve to existing partitions
+          #    (zero-28 uses the ../partitions/ convention like xu20-v32)
+          while IFS= read -r img; do
+            case "$img" in
+              boot.vfat|userdata.ext4|*.fex) : ;;
+              *)
+                base=$(basename "$img")
+                [ -f "$B/partitions/$base" ] || { echo "genimage refs missing: $img"; errors=$((errors+1)); }
+                ;;
+            esac
+          done < <(sed -n 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$B/genimage.cfg")
+
+          echo "total_errors=$errors"
+          [ "$errors" -eq 0 ]
