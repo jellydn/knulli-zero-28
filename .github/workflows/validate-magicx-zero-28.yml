@@ -135,5 +135,18 @@ jobs:
           dd if="$BOOTIMG" of=/tmp/embedded-zimage.bin bs=1 skip="$PAGESIZE" count="$ZSIZE" status=none
           cmp -s /tmp/embedded-zimage.bin "$ZIMAGE" || { echo "partitions/boot.img kernel drifted from boot.img-zImage"; errors=$((errors+1)); }
 
+          # 10) Build-pipeline front half: the a133 defconfig must generate
+          #     cleanly, select BATOCERA_TARGET_A133, and the single-device
+          #     override (used by build-magicx-zero-28.yml EXTRA_OPTS) must
+          #     resolve to a real board dir. This guards the config step that
+          #     runs BEFORE the 180 GiB build.
+          bash configs/createDefconfig.sh configs/knulli-a133
+          grep -q '^BR2_PACKAGE_BATOCERA_TARGET_A133=y$' configs/knulli-a133_defconfig || { echo "defconfig missing BATOCERA_TARGET_A133=y"; errors=$((errors+1)); }
+          grep -q 'magicx-zero-28' package/system/knulli-system/Config.in || { echo "magicx-zero-28 missing from A133 IMAGES default"; errors=$((errors+1)); }
+          [ -d "$B" ] || { echo "magicx-zero-28 board dir missing"; errors=$((errors+1)); }
+          [ -f "$B/create-boot-script.sh" ] || { echo "magicx-zero-28 create-boot-script.sh missing"; errors=$((errors+1)); }
+          [ -f "$B/genimage.cfg" ] || { echo "magicx-zero-28 genimage.cfg missing"; errors=$((errors+1)); }
+          rm -f configs/knulli-a133_defconfig
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
