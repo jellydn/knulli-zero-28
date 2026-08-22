@@ -58,6 +58,14 @@ jobs:
             [ -f "$BP/$f" ] || { echo "MISSING boot_package/$f"; errors=$((errors+1)); }
           done
 
+          # 3b) uImage/uInitrd must be valid images, not just present.
+          #      uImage: arm64 kernel Image (magic "ARMd" at 0x38).
+          #      uInitrd: gzip initrd (magic \x1f\x8b).
+          UMAGIC=$(dd if="$B/uImage" bs=1 skip=56 count=4 2>/dev/null)
+          [ "$UMAGIC" = "ARMd" ] || { echo "uImage is not arm64 Image (magic=$UMAGIC)"; errors=$((errors+1)); }
+          IMAGIC=$(head -c 2 "$B/uInitrd" 2>/dev/null)
+          [ "$IMAGIC" = $'\x1f\x8b' ] || { echo "uInitrd is not gzip"; errors=$((errors+1)); }
+
           # 4) genimage.cfg references resolve to existing partitions
           #    (zero-28 uses the ../partitions/ convention like xu20-v32)
           while IFS= read -r img; do
