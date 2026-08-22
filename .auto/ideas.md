@@ -14,6 +14,15 @@ Primary metric = validation_ok (1 = validate workflow green). Current state: GRE
       panel leak, fex corruption all fire).
 - [x] FIXED dispatch-ref bug: measure.sh must use `REF=knulli-main` (stale
       feature-branch ref silently re-ran the original workflow).
+- [x] uImage/uInitrd magic validity checks.
+- [x] Flashed boot.img kernel-integrity check (embedded zImage == committed
+      source at page offset 2048).
+- [x] env.img byte-identical to xu20-v32 reference (known-good boot env).
+
+### Coverage state: full boot chain now byte-verified
+boot0.img -> boot_package.fex (u-boot/monitor/scp/dtb == source) -> boot.img
+(embedded zImage == source) -> env.img (== xu20-v32 ref). Panel + flash layout
+parity vs reference. Remaining checks are diminishing returns.
 
 ### Candidate strengthening (pick most valuable next)
 - [ ] Verify `env.img` parse: confirm `boot_partition=boot`,
