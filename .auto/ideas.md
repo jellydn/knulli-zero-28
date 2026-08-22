@@ -1,18 +1,37 @@
 # Ideas Backlog — MagicX Zero 28 image
 
-## Stage 2 (only after artifact_ok == 1 is stable)
-- Reduce CI build duration: enable persistent ccache hit verification (already
-  wired via KNULLI_BUILD_ROOT; measure warm-cache build time).
-- `BR2_CCACHE=y` / `BR2_PER_PACKAGE_DIRECTORIES` interplay with the persistent
-  ccache dir — confirm the runner mount is actually reused between dispatches.
-- Parallelize `PARALLEL_BUILD=1` is already set; verify `MAKE_JLEVEL` uses all
-  runner cores (nproc on the x64 box).
-- Consider building only the single device image to skip sibling device
-  genimage steps (already done via EXTRA_OPTS single target).
+## Active loop (GH-hosted validation — no 180 GiB host available)
+Primary metric = validation_ok (1 = validate workflow green). Current state: GREEN.
 
-## Device-port hardening (research notes, not yet acted)
-- Zero 28 DTS: no `cap_touch` node (correct — non-touch panel), `motor_para`
-  vibrator present, `adc_joy_*` calibration values for dual analog.
-- Known upstream test-build issues (from community): first-boot freezes,
-  PS1 micro-stutter, reversed analog in some games, nonworking ADB, irrelevant
-  BT settings. Investigate only if a real artifact exists to test.
+### DONE
+- [x] GH-hosted `validate-magicx-zero-28.yml` (PR/push/manual) with DTS compile,
+      script parse, partition/file existence, genimage refs, boot.img magic,
+      panel-identity guards.
+- [x] Confirmed port soundness vs xu20-v32 reference (boot contract + genimage
+      layout identical).
+
+### Candidate strengthening (pick most valuable next)
+- [ ] Verify `env.img` parse: confirm `boot_partition=boot`,
+      `root_partition=rootfs`, `mmc_root=/dev/mmcblk0p7` match the GPT layout
+      (boot=mmcblk0p?, rootfs=mmcblk0p4). Env says p7 for root, but boot.img
+      cmdline says p4 — document the actual GPT partition numbering.
+- [ ] Add `boot_package.fex` regeneration check on the runner (dragonsecboot
+      pack) — requires host-allwinner-utils, may be heavy for 14 GB runner.
+- [ ] Add a diff-against-reference guard: zero-28 genimage offsets/sizes must
+      equal xu20-v32 (currently only eyeballed, not enforced in CI).
+- [ ] Parse `partitions/genimage.cfg` vs `genimage.cfg` size mismatch (4G vs 5G
+      boot.vfat) — confirm which is authoritative and that the dead file's
+      divergence is harmless.
+
+## Full-image build (requires 180 GiB x64 host + self-hosted runner)
+- Not available per user. If infra appears later:
+  - Reduce CI build duration: verify persistent ccache reuse between dispatches.
+  - `BR2_CCACHE`/`BR2_PER_PACKAGE_DIRECTORIES` interplay with persistent ccache.
+  - Confirm `MAKE_JLEVEL` uses all runner cores.
+
+## Device-port hardening (research notes)
+- Zero 28 DTS: no `cap_touch` node (correct — non-touch), `motor_para` vibrator,
+  `adc_joy_*` dual-analog calibration.
+- Known upstream test-build issues (community): first-boot freezes, PS1
+  micro-stutter, reversed analog in some games, nonworking ADB, irrelevant BT
+  settings. Investigate only with a real artifact to test.

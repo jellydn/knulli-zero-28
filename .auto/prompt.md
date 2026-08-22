@@ -61,5 +61,15 @@ Requires `gh` CLI authed as `jellydn` (already true in this env).
   `genimage.cfg` is correct. NOT a Zero 28 defect.
 - Confirmed Zero 28 `create-boot-script.sh` + `../partitions/` convention is
   self-consistent (matches `xu20-v32` reference).
+- KEY: A133 boards boot via Android-style `boot.img` (zImage + ramdisk.gz +
+  baked cmdline), NOT `boot.scr`/`extlinux.conf` (Rockchip-only). So the
+  committed `boot.scr` (built from `h616-boot.txt`, not `boot.cmd`) is cosmetic
+  and never reaches the image.
+- Zero 28 boot contract MATCHES xu20-v32 reference: `root=/dev/mmcblk0p4`,
+  `console=ttyS0`, `rdinit=/init`, env `mmc_root=p7`.
+- genimage knulli.img layout (offsets/sizes/gpt-location) byte-identical to
+  xu20-v32 reference.
 - Local validation (dtc + mkimage + file checks): total_errors=0, validation_ok=1.
+- Added GH-hosted `validate-magicx-zero-28.yml` (runs on PR/push/manual) with
+  boot-contract + panel-identity guards. Green.
 - Full image build blocked: no 180 GiB host and no self-hosted runner.
