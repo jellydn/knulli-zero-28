@@ -148,5 +148,25 @@ jobs:
           [ -f "$B/genimage.cfg" ] || { echo "magicx-zero-28 genimage.cfg missing"; errors=$((errors+1)); }
           rm -f configs/knulli-a133_defconfig
 
+          # 11) EXTRA_OPTS quoting chain: the CI workflow passes
+          #     'EXTRA_OPTS=BR2_TARGET_KNULLI_IMAGES=\"...\"' through make and
+          #     shell; it must resolve to a line matching the post-image grep,
+          #     else the 180 GiB build silently produces ZERO images. Extract the
+          #     REAL value from the committed workflow and run it through the
+          #     same make+shell expansion the Makefile uses.
+          cat >/tmp/opts_test.mk <<'MKEOF'
+EXTRA_OPTS ?=
+ifdef PARALLEL_BUILD
+	EXTRA_OPTS += BR2_PER_PACKAGE_DIRECTORIES=y
+endif
+test:
+	@for opt in $(EXTRA_OPTS); do echo "$$opt"; done
+MKEOF
+          # Extract the EXTRA_OPTS assignment literal from the build workflow.
+          EXTRA_LINE=$(grep -oE "'EXTRA_OPTS=[^']+'" .github/workflows/build-magicx-zero-28.yml | tr -d "'" | head -1)
+          make -f /tmp/opts_test.mk test BATCH_MODE=1 PARALLEL_BUILD=1 "$EXTRA_LINE" \
+            | grep -qE '^BR2_TARGET_KNULLI_IMAGES[ ]*=[ ]*".*"[ ]*$' \
+            || { echo "EXTRA_OPTS quoting chain broken (produces invalid KNULLI_IMAGES)"; errors=$((errors+1)); }
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
