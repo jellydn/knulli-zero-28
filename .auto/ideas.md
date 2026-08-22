@@ -9,6 +9,11 @@ Primary metric = validation_ok (1 = validate workflow green). Current state: GRE
       panel-identity guards.
 - [x] Confirmed port soundness vs xu20-v32 reference (boot contract + genimage
       layout identical).
+- [x] Boot-package integrity check (fex blobs byte-match committed source + DTS).
+- [x] Verified all guards have teeth via negative tests (panel loss, Zero-40
+      panel leak, fex corruption all fire).
+- [x] FIXED dispatch-ref bug: measure.sh must use `REF=knulli-main` (stale
+      feature-branch ref silently re-ran the original workflow).
 
 ### Candidate strengthening (pick most valuable next)
 - [ ] Verify `env.img` parse: confirm `boot_partition=boot`,
