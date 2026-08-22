@@ -154,15 +154,14 @@ jobs:
           #     else the 180 GiB build silently produces ZERO images. Extract the
           #     REAL value from the committed workflow and run it through the
           #     same make+shell expansion the Makefile uses.
-          cat >/tmp/opts_test.mk <<'MKEOF'
-EXTRA_OPTS ?=
-ifdef PARALLEL_BUILD
-	EXTRA_OPTS += BR2_PER_PACKAGE_DIRECTORIES=y
-endif
-test:
-	@for opt in $(EXTRA_OPTS); do echo "$$opt"; done
-MKEOF
-          # Extract the EXTRA_OPTS assignment literal from the build workflow.
+          printf '%s\n' \
+            'EXTRA_OPTS ?=' \
+            'ifdef PARALLEL_BUILD' \
+            'EXTRA_OPTS += BR2_PER_PACKAGE_DIRECTORIES=y' \
+            'endif' \
+            'test:' \
+            "$(printf '\t')@for opt in \$(EXTRA_OPTS); do echo \"\$\$opt\"; done" \
+            > /tmp/opts_test.mk
           EXTRA_LINE=$(grep -oE "'EXTRA_OPTS=[^']+'" .github/workflows/build-magicx-zero-28.yml | tr -d "'" | head -1)
           make -f /tmp/opts_test.mk test BATCH_MODE=1 PARALLEL_BUILD=1 "$EXTRA_LINE" \
             | grep -qE '^BR2_TARGET_KNULLI_IMAGES[ ]*=[ ]*".*"[ ]*$' \
