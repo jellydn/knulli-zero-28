@@ -93,5 +93,16 @@ jobs:
           grep -q 'RTP40WV101B' "$DTS" && { echo "WRONG panel: Zero 40 RTP40WV101B leaked into Zero 28"; errors=$((errors+1)); }
           grep -q 'cap_touch' "$DTS" && { echo "WRONG: touch panel node present in non-touch Zero 28"; errors=$((errors+1)); }
 
+          # 7) Flash-layout parity: the Zero 28 partition offsets/sizes must match
+          #    the known-working xu20-v32 A133 reference. A drift here bricks devices.
+          #    Normalize the board-specific boot_package.fex filename before diffing.
+          Z28=board/allwinner/a133/magicx-zero-28/genimage.cfg
+          REF=board/allwinner/a133/xu20-v32/genimage.cfg
+          norm() { sed -n '/image knulli.img/,/^}/p' "$1" | sed -E 's/[a-z0-9-]+_boot_package\.fex/BOARD_boot_package.fex/'; }
+          if ! diff <(norm "$Z28") <(norm "$REF") >/tmp/layout.diff 2>&1; then
+            echo "genimage layout drifted from xu20-v32 reference:"; cat /tmp/layout.diff
+            errors=$((errors+1))
+          fi
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
