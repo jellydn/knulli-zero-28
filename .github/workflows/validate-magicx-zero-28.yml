@@ -131,9 +131,9 @@ jobs:
           ZIMAGE=package/boot/uboot-a133/magicx-zero-28/boot/boot.img-zImage
           PAGESIZE=$(cat package/boot/uboot-a133/magicx-zero-28/boot/boot.img-pagesize 2>/dev/null || echo 2048)
           ZSIZE=$(stat -c%s "$ZIMAGE")
-          KERN=$(dd if="$BOOTIMG" bs=1 skip="$PAGESIZE" count="$ZSIZE" 2>/dev/null)
-          SRC=$(cat "$ZIMAGE")
-          [ "$KERN" = "$SRC" ] || { echo "partitions/boot.img kernel drifted from boot.img-zImage"; errors=$((errors+1)); }
+          # File-based comparison (NOT shell vars — command substitution strips NUL).
+          dd if="$BOOTIMG" of=/tmp/embedded-zimage.bin bs=1 skip="$PAGESIZE" count="$ZSIZE" status=none
+          cmp -s /tmp/embedded-zimage.bin "$ZIMAGE" || { echo "partitions/boot.img kernel drifted from boot.img-zImage"; errors=$((errors+1)); }
 
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
