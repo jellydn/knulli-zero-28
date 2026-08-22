@@ -104,5 +104,17 @@ jobs:
             errors=$((errors+1))
           fi
 
+          # 8) Boot-package integrity: the committed partitions/boot_package.fex
+          #    must byte-contain the committed u-boot/monitor/scp blobs and the DTB
+          #    built from the committed DTS. This proves the shipped boot package
+          #    is internally consistent with the source (a silent drift would
+          #    otherwise go undetected until a device fails to boot).
+          python3 package/boot/uboot-a133/extract_boot_package.py "$B/partitions/boot_package.fex" >/dev/null 2>&1
+          for f in u-boot.bin monitor.bin scp.bin; do
+            cmp -s "output_blocks/$f" "$BP/$f" || { echo "boot_package.fex $f drifted from committed source"; errors=$((errors+1)); }
+          done
+          dtc -I dts -O dtb -o /tmp/fresh.dtb "$BP/magicx-zero-28.dts" 2>/dev/null
+          cmp -s /tmp/fresh.dtb output_blocks/dtb.bin || { echo "boot_package.fex dtb drifted from committed DTS"; errors=$((errors+1)); }
+
           echo "total_errors=$errors"
           [ "$errors" -eq 0 ]
