@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Native Buildkite Zero 28 image build (flashable .img.gz).
+# Requires: Linux x86_64 agent, Docker, >=180 GiB free, git, make.
+# Env: KNULLI_BUILD_ROOT (optional persistent cache root)
+
+echo "--- :disk: Prepare build directories"
+REPO_SLUG="${BUILDKITE_PIPELINE_SLUG:-knulli-zero-28}"
+BUILD_ROOT="${KNULLI_BUILD_ROOT:-${HOME}/.cache/knulli-buildkite/${REPO_SLUG}}"
+mkdir -p "${BUILD_ROOT}"/{ccache,downloads,output}
+export CCACHE_DIR="${BUILD_ROOT}/ccache"
+export DL_DIR="${BUILD_ROOT}/downloads"
+export OUTPUT_DIR="${BUILD_ROOT}/output"
+
+available_bytes=$(df --output=avail -B1 "${BUILD_ROOT}" | tail -1 | tr -d ' ')
+required_bytes=$((180 * 1024 * 1024 * 1024))
+if ((available_bytes < required_bytes)); then
+  echo "Need >=180 GiB free; found $((available_bytes / 1024 / 1024 / 1024)) GiB at ${BUILD_ROOT}" >&2
+  exit 1
+fi
+
+docker info >/dev/null
+
+if [[ "${CLEAN_OUTPUT:-}" == "1" || "${CLEAN_OUTPUT:-}" == "true" ]]; then
+  echo "--- :broom: Clean previous a133 output"
+  rm -rf "${OUTPUT_DIR}/a133" || true
+fi
+
+# Buildkite checkout can omit recursive submodules.
+echo "--- :git: Submodules"
+git submodule update --init --recursive
+
+echo "--- :docker: Build knulli build container"
+make build-docker-image
+
+echo "--- :hammer: make a133-build (MagicX Zero 28 only)"
+# This EXTRA_OPTS quoting must match the GitHub Actions workflow.
+make \
+  BATCH_MODE=1 \
+  PARALLEL_BUILD=1 \
+  'EXTRA_OPTS=BR2_TARGET_KNULLI_IMAGES=\"allwinner/a133/magicx-zero-28\"' \
+  a133-build
+
+IMG_DIR="${OUTPUT_DIR}/a133/images/knulli/images/magicx-zero-28"
+echo "--- :package: Collect artifacts"
+mkdir -p artifacts/magicx-zero-28
+shopt -s nullglob
+files=("${IMG_DIR}"/*.img.gz "${IMG_DIR}"/*.img.gz.md5 "${IMG_DIR}"/*.img.gz.sha256)
+if ((${#files[@]} == 0)); then
+  echo "No images under ${IMG_DIR}" >&2
+  ls -laR "${OUTPUT_DIR}/a133/images" 2>/dev/null || true
+  exit 1
+fi
+cp -v "${files[@]}" artifacts/magicx-zero-28/
+
+ls -lh artifacts/magicx-zero-28/
+
+{
+  echo "### MagicX Zero 28 flashable image"
+  echo ""
+  echo "Download the Buildkite artifacts from this job (\`.img.gz\`)."
+  echo ""
+  echo "Flash with balenaEtcher or:"
+  echo '```'
+  echo "gzcat knulli-*.img.gz | sudo dd of=/dev/rdiskN bs=4m"
+  echo '```'
+  echo ""
+  echo '```'
+  ls -lh artifacts/magicx-zero-28/
+  echo '```'
+} | buildkite-agent annotate --style "success" --context "zero28-image" || true
+
+echo "+++ Done"

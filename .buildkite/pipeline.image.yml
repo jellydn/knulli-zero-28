@@ -1,0 +1,33 @@
+steps:
+  - label: ":docker: Native Zero 28 image build"
+    key: native-build
+    timeout_in_minutes: 480
+    concurrency: 1
+    concurrency_group: "knulli-zero28-image"
+    agents:
+      queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
+    command: "bash .buildkite/scripts/build-zero28-image.sh"
+    artifact_paths:
+      - "artifacts/magicx-zero-28/*.img.gz"
+      - "artifacts/magicx-zero-28/*.img.gz.md5"
+      - "artifacts/magicx-zero-28/*.img.gz.sha256"
+
+  # A group conditional prevents the plugin hook from running when this
+  # compatibility path is not requested.
+  - group: ":github: Optional GHA image build"
+    if: build.env("BUILD_ZERO28_IMAGE_VIA_GHA") == "1"
+    steps:
+      - label: ":github: GHA build via buildkite-gha"
+        key: gha-build
+        timeout_in_minutes: 480
+        concurrency: 1
+        concurrency_group: "knulli-zero28-image"
+        agents:
+          queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
+        plugins:
+          - github-actions#v0.13.0:
+              version: "0.35.1"
+              workflow: .github/workflows/build-magicx-zero-28.yml
+              runners:
+                - runs-on: [self-hosted, Linux, X64]
+                  queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
