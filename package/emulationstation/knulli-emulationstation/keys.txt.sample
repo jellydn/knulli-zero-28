@@ -1,3 +1,6 @@
+# Required for ScreenScraper source in ES Scraper menu.
+# Without SCREENSCRAPER_DEV_LOGIN, ScreenScraper is compiled out.
+# Copy to keys.txt (gitignored) and set real developer login from screenscraper.fr
 SCREENSCRAPER_DEV_LOGIN=
 GAMESDB_APIKEY=
 CHEEVOS_DEV_LOGIN=
