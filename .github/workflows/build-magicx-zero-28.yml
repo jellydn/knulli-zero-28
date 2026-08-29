@@ -1,0 +1,99 @@
+name: Build MagicX Zero 28 image
+
+on:
+  workflow_dispatch:
+    inputs:
+      clean_output:
+        description: 'Wipe OUTPUT_DIR before build (slow full rebuild)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: knulli-magicx-zero-28-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Knulli needs more than 180 GB of free disk. Use an x64 self-hosted
+    # Linux runner with Docker and enough storage.
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 480
+    env:
+      KNULLI_BUILD_ROOT: ${{ vars.KNULLI_BUILD_ROOT }}
+
+    steps:
+      - name: Check out source and submodules
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Prepare persistent build directories
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_root="${KNULLI_BUILD_ROOT:-$HOME/.cache/knulli-actions/${GITHUB_REPOSITORY//\//-}}"
+          mkdir -p "$build_root"/{ccache,downloads,output}
+
+          available_bytes=$(df --output=avail -B1 "$build_root" | tail -1 | tr -d ' ')
+          required_bytes=$((180 * 1024 * 1024 * 1024))
+          if (( available_bytes < required_bytes )); then
+            echo "At least 180 GiB of free disk is required; found $((available_bytes / 1024 / 1024 / 1024)) GiB." >&2
+            exit 1
+          fi
+
+          docker info >/dev/null
+          {
+            echo "CCACHE_DIR=$build_root/ccache"
+            echo "DL_DIR=$build_root/downloads"
+            echo "OUTPUT_DIR=$build_root/output"
+          } >> "$GITHUB_ENV"
+
+      - name: Optional clean output
+        if: inputs.clean_output == true || inputs.clean_output == 'true'
+        run: rm -rf "${OUTPUT_DIR}/a133" || true
+
+      - name: Build Knulli Docker image
+        run: make build-docker-image
+
+      - name: Build MagicX Zero 28 image
+        run: |
+          make \
+            BATCH_MODE=1 \
+            PARALLEL_BUILD=1 \
+            'EXTRA_OPTS=BR2_TARGET_KNULLI_IMAGES=\"allwinner/a133/magicx-zero-28\"' \
+            a133-build
+
+      - name: List image artifacts
+        run: |
+          set -euo pipefail
+          IMG_DIR="${OUTPUT_DIR}/a133/images/knulli/images/magicx-zero-28"
+          ls -lh "$IMG_DIR" || true
+          echo "### Flashable images" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download the artifact **knulli-magicx-zero-28-${GITHUB_SHA}** from this run." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Flash the \`.img.gz\` to a microSD (e.g. balenaEtcher / \`gzcat file.img.gz | dd of=/dev/rdiskN bs=4m\`)." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -d "$IMG_DIR" ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            ls -lh "$IMG_DIR" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload image and checksums
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: knulli-magicx-zero-28-${{ github.sha }}
+          path: |
+            ${{ env.OUTPUT_DIR }}/a133/images/knulli/images/magicx-zero-28/*.img.gz
+            ${{ env.OUTPUT_DIR }}/a133/images/knulli/images/magicx-zero-28/*.img.gz.md5
+            ${{ env.OUTPUT_DIR }}/a133/images/knulli/images/magicx-zero-28/*.img.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
