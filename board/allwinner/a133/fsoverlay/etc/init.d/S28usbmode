@@ -83,7 +83,7 @@ case "$1" in
       #USB 2.0
       echo 0x0200 > $GADGET/bcdUSB
       mkdir -p $GADGET/strings/0x409
-      echo 1 > $GADGET/os_desc/use 1
+      echo 1 > $GADGET/os_desc/use
       echo "0x1d6b" > $GADGET/idVendor
       echo "0x0104" > $GADGET/idProduct
       echo "0123456789" > $GADGET/strings/0x409/serialnumber
@@ -113,10 +113,19 @@ case "$1" in
     # kill adbd if running
     killall -9 adbd 2>/dev/null
     # unbind gadget
-    if [ -d $GADGET ]; then
-      echo "" > $GADGET/UDC
-      umount /sys/kernel/config
-      rm -rf $GADGET
+    if [ -d "$GADGET" ]; then
+      echo "" > "$GADGET/UDC"
+      for link in "$GADGET"/configs/*/*; do
+        [ -L "$link" ] && rm -f "$link"
+      done
+      if grep -qs " /dev/usb-ffs/adb " /proc/mounts; then
+        umount /dev/usb-ffs/adb
+      fi
+      rmdir "$GADGET"/configs/*/strings/* 2>/dev/null
+      rmdir "$GADGET"/configs/* 2>/dev/null
+      rmdir "$GADGET"/functions/* 2>/dev/null
+      rmdir "$GADGET"/strings/* 2>/dev/null
+      rmdir "$GADGET" 2>/dev/null
     fi
     [ $? = 0 ] && echo "OK" || echo "FAIL"
     ;;
