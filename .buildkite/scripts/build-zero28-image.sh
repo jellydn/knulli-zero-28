@@ -65,6 +65,10 @@ git submodule update --init --recursive
 echo "--- :docker: Build knulli build container"
 make build-docker-image
 
+echo "--- :docker: Verify knulli-build image is local"
+docker image inspect knulli/knulli-build:latest >/dev/null
+docker images knulli/knulli-build
+
 echo "--- :hammer: make a133-build (MagicX Zero 28 only)"
 # This EXTRA_OPTS quoting must match the GitHub Actions workflow.
 make \
