@@ -2,6 +2,8 @@
 #
 # Always runs board validation by importing the GitHub Actions workflow
 # through buildkite-gha (https://github.com/buildkite/buildkite-gha).
+# Keep the workflow push trigger free of path filters so buildkite-gha can
+# safely evaluate GitHub push events.
 #
 # Full flashable image builds are opt-in:
 #   BUILD_ZERO28_IMAGE=1   -> upload .buildkite/pipeline.image.yml

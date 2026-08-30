@@ -20,17 +20,8 @@ on:
       - '.github/workflows/build-magicx-zero-28.yml'
       - '.auto/**'
   push:
-    paths:
-      - 'board/allwinner/a133/magicx-zero-28/**'
-      - 'board/allwinner/a133/fsoverlay/**'
-      - 'board/fsoverlay/**'
-      - 'package/boot/uboot-a133/magicx-zero-28/**'
-      - 'package/system/knulli-system/Config.in'
-      - 'package/system/knulli-audio/**'
-      - 'package/system/knulli-configgen/**'
-      - '.github/workflows/validate-magicx-zero-28.yml'
-      - '.github/workflows/build-magicx-zero-28.yml'
-      - '.auto/**'
+    branches:
+      - '**'
 
 permissions:
   contents: read
