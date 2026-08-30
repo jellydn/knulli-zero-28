@@ -9,7 +9,18 @@ steps:
       queue: "${BUILDKITE_QUEUE_IMAGE:-linux-large}"
     env:
       KNULLI_MIN_FREE_GIB: "100"
-      # Hosted large has ~158GB total disk; 100 GiB free is the practical floor.
+      # Workspace-relative root so Buildkite cache volumes can bind it
+      KNULLI_BUILD_ROOT: "knulli-br-cache"
+      # linux-large = 8 vCPU; keep parallel but avoid memory thrash
+      MAKE_JLEVEL: "8"
+      PARALLEL_BUILD: "1"
+      BATCH_MODE: "1"
+    cache:
+      name: knulli-zero28-dl-ccache
+      size: 80g
+      paths:
+        - "knulli-br-cache/downloads"
+        - "knulli-br-cache/ccache"
     command: "bash .buildkite/scripts/build-zero28-image.sh"
     artifact_paths:
       - "artifacts/magicx-zero-28/*.img.gz"

@@ -8,10 +8,16 @@ set -euo pipefail
 echo "--- :disk: Prepare build directories"
 REPO_SLUG="${BUILDKITE_PIPELINE_SLUG:-knulli-zero-28}"
 BUILD_ROOT="${KNULLI_BUILD_ROOT:-${HOME}/.cache/knulli-buildkite/${REPO_SLUG}}"
+if [[ "${BUILD_ROOT}" != /* ]]; then
+  BUILD_ROOT="${PWD}/${BUILD_ROOT}"
+fi
 mkdir -p "${BUILD_ROOT}"/{ccache,downloads,output}
 export CCACHE_DIR="${BUILD_ROOT}/ccache"
 export DL_DIR="${BUILD_ROOT}/downloads"
 export OUTPUT_DIR="${BUILD_ROOT}/output"
+if [[ -n "${MAKE_JLEVEL:-}" ]]; then
+  export MAKE_JLEVEL
+fi
 
 available_bytes=$(df --output=avail -B1 "${BUILD_ROOT}" | tail -1 | tr -d ' ')
 available_gib=$((available_bytes / 1024 / 1024 / 1024))
@@ -19,6 +25,7 @@ required_gib="${KNULLI_MIN_FREE_GIB:-180}"
 required_bytes=$((required_gib * 1024 * 1024 * 1024))
 df -h "${BUILD_ROOT}" || true
 echo "BUILD_ROOT=${BUILD_ROOT}"
+echo "nproc=$(nproc) MAKE_JLEVEL=${MAKE_JLEVEL:-} PARALLEL_BUILD=${PARALLEL_BUILD:-}"
 echo "free=${available_gib} GiB  required=${required_gib} GiB"
 
 if ((available_bytes < required_bytes)); then
@@ -69,11 +76,15 @@ echo "--- :docker: Verify knulli-build image is local"
 docker image inspect knulli/knulli-build:latest >/dev/null
 docker images knulli/knulli-build
 
+echo "--- :bar_chart: Build parallelism"
+echo "nproc=$(nproc) MAKE_JLEVEL=${MAKE_JLEVEL:-} PARALLEL_BUILD=${PARALLEL_BUILD:-}"
+
 echo "--- :hammer: make a133-build (MagicX Zero 28 only)"
 # This EXTRA_OPTS quoting must match the GitHub Actions workflow.
 make \
   BATCH_MODE=1 \
   PARALLEL_BUILD=1 \
+  MAKE_JLEVEL="${MAKE_JLEVEL:-$(nproc)}" \
   'EXTRA_OPTS=BR2_TARGET_KNULLI_IMAGES=\"allwinner/a133/magicx-zero-28\"' \
   a133-build
 
