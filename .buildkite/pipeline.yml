@@ -6,9 +6,9 @@
 # Full flashable image builds are opt-in:
 #   BUILD_ZERO28_IMAGE=1   -> upload .buildkite/pipeline.image.yml
 #
-# Agent queues (configure in Buildkite and on agents):
-#   BUILDKITE_QUEUE_VALIDATE (default: default) — small Linux agent or hosted
-#   BUILDKITE_QUEUE_IMAGE (default: knulli-image) — Docker and 180 GiB free
+# Agent queues default to linux-small so a single-agent setup does not stall.
+# Production should split validation and image work into separate queues. Set
+# BUILDKITE_QUEUE_IMAGE=knulli-image for an image agent with 180 GiB free.
 
 env:
   BUILDKITE_PLUGIN_GITHUB_ACTIONS_VERSION: "0.35.1"
@@ -18,14 +18,14 @@ steps:
     key: gha-validate
     timeout_in_minutes: 30
     agents:
-      queue: "${BUILDKITE_QUEUE_VALIDATE:-default}"
+      queue: "${BUILDKITE_QUEUE_VALIDATE:-linux-small}"
     plugins:
       - github-actions#v0.13.0:
           version: "0.35.1"
           workflow: .github/workflows/validate-magicx-zero-28.yml
           runners:
             - runs-on: ubuntu-latest
-              queue: "${BUILDKITE_QUEUE_VALIDATE:-default}"
+              queue: "${BUILDKITE_QUEUE_VALIDATE:-linux-small}"
 
   - label: ":pipeline: Queue flashable image build"
     key: queue-image

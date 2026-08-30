@@ -1,11 +1,14 @@
 steps:
+  # linux-small supports a single-agent setup, but image builds need 180 GiB
+  # free. Production should set BUILDKITE_QUEUE_IMAGE=knulli-image and use a
+  # separate large agent queue.
   - label: ":docker: Native Zero 28 image build"
     key: native-build
     timeout_in_minutes: 480
     concurrency: 1
     concurrency_group: "knulli-zero28-image"
     agents:
-      queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
+      queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"
     command: "bash .buildkite/scripts/build-zero28-image.sh"
     artifact_paths:
       - "artifacts/magicx-zero-28/*.img.gz"
@@ -23,11 +26,11 @@ steps:
         concurrency: 1
         concurrency_group: "knulli-zero28-image"
         agents:
-          queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
+          queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"
         plugins:
           - github-actions#v0.13.0:
               version: "0.35.1"
               workflow: .github/workflows/build-magicx-zero-28.yml
               runners:
                 - runs-on: [self-hosted, Linux, X64]
-                  queue: "${BUILDKITE_QUEUE_IMAGE:-knulli-image}"
+                  queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"

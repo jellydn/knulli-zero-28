@@ -20,10 +20,11 @@ plugin, runtime, or imported workflows.
 
 3. Map GitHub pull request and push events in the pipeline settings. Buildkite,
    not the imported workflow `on` section, creates builds.
-4. Provide these agent queues:
-   - `default` (or set `BUILDKITE_QUEUE_VALIDATE`): Linux x86_64 for validation.
-   - `knulli-image` (or set `BUILDKITE_QUEUE_IMAGE`): Linux x86_64 with Docker,
-     Git, Make, and at least 180 GiB of free storage.
+4. Provide a `linux-small` Linux x86_64 agent queue. It is the default for both
+   validation and image jobs so a single-agent setup does not leave jobs stuck.
+   Image builds still need Docker, Git, Make, and at least 180 GiB of free
+   storage. Production setups should use a separate `knulli-image` queue and set
+   `BUILDKITE_QUEUE_IMAGE=knulli-image`.
 
 Use disposable, isolated validation agents without protected ambient secrets for
 pull requests. Imported workflow steps and actions are repository code.
@@ -47,8 +48,8 @@ Optional environment variables:
 | `BUILD_ZERO28_IMAGE_VIA_GHA=1` | Also run the existing image workflow through `buildkite-gha`. |
 | `CLEAN_OUTPUT=1` | Remove the cached A133 output before the native build. |
 | `KNULLI_BUILD_ROOT=/var/cache/knulli` | Select the persistent downloads, ccache, and output root. |
-| `BUILDKITE_QUEUE_VALIDATE=name` | Override the validation queue. |
-| `BUILDKITE_QUEUE_IMAGE=name` | Override the image-build queue. |
+| `BUILDKITE_QUEUE_VALIDATE=name` | Override the `linux-small` validation queue. |
+| `BUILDKITE_QUEUE_IMAGE=name` | Override the `linux-small` image queue, for example with `knulli-image`. |
 
 The image jobs share a concurrency group, so only one large Zero 28 build runs
 at a time.
