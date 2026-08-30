@@ -14,9 +14,39 @@ export DL_DIR="${BUILD_ROOT}/downloads"
 export OUTPUT_DIR="${BUILD_ROOT}/output"
 
 available_bytes=$(df --output=avail -B1 "${BUILD_ROOT}" | tail -1 | tr -d ' ')
-required_bytes=$((180 * 1024 * 1024 * 1024))
+available_gib=$((available_bytes / 1024 / 1024 / 1024))
+required_gib="${KNULLI_MIN_FREE_GIB:-180}"
+required_bytes=$((required_gib * 1024 * 1024 * 1024))
+df -h "${BUILD_ROOT}" || true
+echo "BUILD_ROOT=${BUILD_ROOT}"
+echo "free=${available_gib} GiB  required=${required_gib} GiB"
+
 if ((available_bytes < required_bytes)); then
-  echo "Need >=180 GiB free; found $((available_bytes / 1024 / 1024 / 1024)) GiB at ${BUILD_ROOT}" >&2
+  cat >&2 <<EOF
+ERROR: Not enough free disk for a full KNULLI A133 image build.
+
+  BUILD_ROOT: ${BUILD_ROOT}
+  Free:       ${available_gib} GiB
+  Required:   ${required_gib} GiB (override with KNULLI_MIN_FREE_GIB, not recommended below 180)
+
+A full Buildroot tree + Docker layers typically needs ~150-200 GiB.
+This agent only has ~${available_gib} GiB free — the build cannot succeed here.
+
+Fix options:
+  1) Attach a large volume and set on the agent / build env:
+       KNULLI_BUILD_ROOT=/mnt/bigdisk/knulli
+  2) Free space on the agent (docker system prune -af, remove old outputs).
+  3) Use a different machine with >=${required_gib} GiB free + Docker.
+
+  df -h ${BUILD_ROOT}
+  docker system df
+EOF
+  if command -v buildkite-agent >/dev/null; then
+    printf '%s\n' "### Disk space insufficient" "" \
+      "Free **${available_gib} GiB** at \`${BUILD_ROOT}\`; need **${required_gib} GiB**." "" \
+      "Set \`KNULLI_BUILD_ROOT\` to a large volume or expand the agent disk." \
+      | buildkite-agent annotate --style "error" --context "zero28-disk" || true
+  fi
   exit 1
 fi
 
