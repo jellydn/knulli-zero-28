@@ -36,7 +36,8 @@ Fix options:
   1) Attach a large volume and set on the agent / build env:
        KNULLI_BUILD_ROOT=/mnt/bigdisk/knulli
   2) Free space on the agent (docker system prune -af, remove old outputs).
-  3) Use a different machine with >=${required_gib} GiB free + Docker.
+  3) Try the linux-large queue (BUILDKITE_QUEUE_IMAGE=linux-large), or use a
+     different machine with >=${required_gib} GiB free + Docker.
 
   df -h ${BUILD_ROOT}
   docker system df

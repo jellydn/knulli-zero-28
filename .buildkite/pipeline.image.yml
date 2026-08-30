@@ -1,14 +1,15 @@
 steps:
-  # linux-small supports a single-agent setup, but image builds need 180 GiB
-  # free. Production should set BUILDKITE_QUEUE_IMAGE=knulli-image and use a
-  # separate large agent queue.
-  - label: ":docker: Native Zero 28 image build"
+  # Build flashable images on Buildkite's large hosted Linux shape by default.
+  - label: ":docker: Native Zero 28 image build (linux-large hosted)"
     key: native-build
     timeout_in_minutes: 480
     concurrency: 1
     concurrency_group: "knulli-zero28-image"
     agents:
-      queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"
+      queue: "${BUILDKITE_QUEUE_IMAGE:-linux-large}"
+    env:
+      KNULLI_MIN_FREE_GIB: "100"
+      # Hosted large has ~158GB total disk; 100 GiB free is the practical floor.
     command: "bash .buildkite/scripts/build-zero28-image.sh"
     artifact_paths:
       - "artifacts/magicx-zero-28/*.img.gz"
@@ -26,11 +27,11 @@ steps:
         concurrency: 1
         concurrency_group: "knulli-zero28-image"
         agents:
-          queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"
+          queue: "${BUILDKITE_QUEUE_IMAGE:-linux-large}"
         plugins:
           - github-actions#v0.13.0:
               version: "0.35.1"
               workflow: .github/workflows/build-magicx-zero-28.yml
               runners:
                 - runs-on: [self-hosted, Linux, X64]
-                  queue: "${BUILDKITE_QUEUE_IMAGE:-linux-small}"
+                  queue: "${BUILDKITE_QUEUE_IMAGE:-linux-large}"
