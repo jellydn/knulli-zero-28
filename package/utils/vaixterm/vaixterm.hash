@@ -1,6 +1,6 @@
-# Upstream git checkout is archived by Buildroot as *-git4.tar.gz.
-# Content hash is not stable across archive tooling; accept any (pinned VERSION).
-sha256  none  vaixterm-fd79eab34137347e5f2c54b32804f47ca48bf50a-git4.tar.gz
+# vaixterm source archives
+sha256  93d2d54ef39ca02b9ba81708abfc3f6a1ee5a5102d1e90da482d67e3ef6cded1  vaixterm-fd79eab34137347e5f2c54b32804f47ca48bf50a.tar.gz
+sha256  90c0200c80204947f2e67334d78c231f784947207a5107e736679c00ad9f452b  vaixterm-fd79eab34137347e5f2c54b32804f47ca48bf50a-git4.tar.gz
 
 # libvterm 0.3.3 from leonerd (vendored for vterm.h)
 sha256  09156f43dd2128bd347cbeebe50d9a571d32c64e0cf18d211197946aff7226e0  libvterm-0.3.3.tar.gz

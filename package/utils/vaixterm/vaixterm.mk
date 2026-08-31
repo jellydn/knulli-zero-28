@@ -5,15 +5,13 @@
 ################################################################################
 
 VAIXTERM_VERSION = fd79eab34137347e5f2c54b32804f47ca48bf50a
-VAIXTERM_SITE = https://github.com/Stanley00/vaixterm.git
-VAIXTERM_SITE_METHOD = git
-VAIXTERM_GIT_SUBMODULES = NO
+VAIXTERM_SITE = $(call github,Stanley00,vaixterm,$(VAIXTERM_VERSION))
 VAIXTERM_LICENSE = MIT
 VAIXTERM_LICENSE_FILES = LICENSE
 
 VAIXTERM_DEPENDENCIES = sdl2 sdl2_ttf sdl2_image host-pkgconf
 
-# Keep this aligned with the libvterm version used by upstream CI.
+# Vendored libvterm (upstream CI uses 0.3.3)
 VAIXTERM_LIBVTERM_VERSION = 0.3.3
 VAIXTERM_LIBVTERM_SOURCE = libvterm-$(VAIXTERM_LIBVTERM_VERSION).tar.gz
 VAIXTERM_EXTRA_DOWNLOADS = https://www.leonerd.org.uk/code/libvterm/$(VAIXTERM_LIBVTERM_SOURCE)
