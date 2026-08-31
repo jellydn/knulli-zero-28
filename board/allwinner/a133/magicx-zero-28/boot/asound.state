@@ -94,8 +94,8 @@ state.audiocodec {
 	control.8 {
 		iface MIXER
 		name 'DAC volume'
-		value.0 0
-		value.1 0
+		value.0 160
+		value.1 160
 		comment {
 			access 'read write'
 			type INTEGER
@@ -103,8 +103,8 @@ state.audiocodec {
 			range '0 - 255'
 			dbmin -11925
 			dbmax 7200
-			dbvalue.0 -11925
-			dbvalue.1 -11925
+			dbvalue.0 75
+			dbvalue.1 75
 		}
 	}
 	control.9 {

@@ -79,7 +79,8 @@ case "${ACTION}" in
                             MODE=alsa_output._sys_devices_platform_soc_sndcodec_sound_card0.playback.0.0
                             amixer -c 0 sset 'HpSpeaker' on
                             amixer -c 0 sset 'Headphone' on
-                            amixer -c 0 sset Headphone "$(knulli-settings-get audio.headphone || echo 0)"
+                            amixer -c 0 sset Headphone "$(knulli-settings-get audio.headphone || echo 3)"
+                            amixer -c 0 sset 'DAC volume' 160 160 2>/dev/null || true
                             amixer -c 0 sset 'ADC volume' 0
                             amixer -c 0 sset 'LINEOUT volume' 0
 

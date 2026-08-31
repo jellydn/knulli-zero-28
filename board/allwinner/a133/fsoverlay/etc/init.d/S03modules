@@ -3,32 +3,44 @@
 BOARD=$(cat /boot/boot/knulli.board)
 
 case $1 in
-    start)
-      if [ "$BOARD" = "trimui-smart-pro" ]; then
+  start)
+    case "$BOARD" in
+      trimui-smart-pro)
         insmod /lib/modules/4.9.191/xradio_mac_tsp.ko
         insmod /lib/modules/4.9.191/xradio_core_tsp.ko
-        insmod /lib/modules/4.9.191/xradio_wlan_tsp.ko 
-      else
+        insmod /lib/modules/4.9.191/xradio_wlan_tsp.ko
+        ;;
+      trimui-brick|trimui-brick-pro|powkiddy-v90s|powkiddy-v20|magicx-zero-40)
         insmod /lib/modules/4.9.191/xradio_mac.ko
         insmod /lib/modules/4.9.191/xradio_core.ko
         insmod /lib/modules/4.9.191/xradio_wlan.ko
-      fi
-      for i in /lib/modules/4.9.191/xt*; do insmod $i;done
-      insmod /lib/modules/4.9.191/ipt_REJECT.ko
-      insmod /lib/modules/4.9.191/iptable_filter.ko
-      ;;
+        ;;
+      magicx-zero-28)
+        insmod "/lib/modules/$(uname -r)/8189es.ko" 2>/dev/null || \
+          insmod /lib/modules/4.9.191/8189es.ko 2>/dev/null
+        ;;
+    esac
+    for i in /lib/modules/4.9.191/xt*; do insmod "$i"; done
+    insmod /lib/modules/4.9.191/ipt_REJECT.ko
+    insmod /lib/modules/4.9.191/iptable_filter.ko
+    ;;
   stop)
-      if [ "$BOARD" = "trimui-smart-pro" ]; then
+    case "$BOARD" in
+      trimui-smart-pro)
         rmmod xradio_wlan_tsp
         rmmod xradio_core_tsp
         rmmod xradio_mac_tsp
-      else
+        ;;
+      trimui-brick|trimui-brick-pro|powkiddy-v90s|powkiddy-v20|magicx-zero-40)
         rmmod xradio_wlan
         rmmod xradio_core
         rmmod xradio_mac
-      fi
-      ;;
+        ;;
+      magicx-zero-28)
+        rmmod 8189es
+        ;;
+    esac
+    ;;
 esac
 
 exit 0
-

@@ -22,6 +22,14 @@ Knulli CFW is a fork of the open-source and completely free retro-gaming distrib
 
  - :wrench: If you want to help with development, [we accept PRs](https://makeapullrequest.com/) -- anyone is welcome, we embrace the [Bazaar development principles](https://en.wikipedia.org/wiki/The_Cathedral_and_the_Bazaar)
 
+## Agent disk requirements
+
+The full MagicX Zero 28 image build needs at least 180 GiB of free disk space. An agent with only about 41 GiB free cannot complete the Buildroot build. Set `KNULLI_BUILD_ROOT=/mnt/bigdisk/knulli` to keep downloads, cache, and output on a larger volume. If old Docker data uses the disk, inspect it with `docker system df` and, after confirming that it is safe to remove, run `docker system prune -af`. `KNULLI_MIN_FREE_GIB` can change the preflight limit, but values below 180 are not recommended.
+
+## Build time expectations
+
+A cold first image build often takes 3–6 hours or more on `linux-large`. This is normal for a full KNULLI/Buildroot distribution image; do not expect GitHub Actions build times. A second build with the Buildkite cache volume is much faster because it can reuse Buildroot downloads and ccache results. If cache volumes do not attach, enable Cache Storage for the Buildkite cluster.
+
 ## Directory navigation
 
  - `board` Platform-specific build configuration. This is where to include special patches/configuration files needed to have particular components work on a particular platform. It is instead encouraged to apply patches at the location of the package itself, but this may not always be possible.

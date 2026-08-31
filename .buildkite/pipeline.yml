@@ -1,0 +1,37 @@
+# Default Buildkite pipeline for MagicX Zero 28 / knulli-zero-28
+#
+# Always runs board validation by importing the GitHub Actions workflow
+# through buildkite-gha (https://github.com/buildkite/buildkite-gha).
+# Keep the workflow push trigger free of path filters so buildkite-gha can
+# safely evaluate GitHub push events.
+#
+# Full flashable image builds are opt-in:
+#   BUILD_ZERO28_IMAGE=1   -> upload .buildkite/pipeline.image.yml
+#
+# Validation and pipeline upload use linux-small. Image work uses Buildkite's
+# linux-large hosted queue by default.
+
+env:
+  BUILDKITE_PLUGIN_GITHUB_ACTIONS_VERSION: "0.35.1"
+
+steps:
+  - label: ":github: Validate Zero 28 (buildkite-gha)"
+    key: gha-validate
+    timeout_in_minutes: 30
+    agents:
+      queue: "${BUILDKITE_QUEUE_VALIDATE:-linux-small}"
+    plugins:
+      - github-actions#v0.13.0:
+          version: "0.35.1"
+          workflow: .github/workflows/validate-magicx-zero-28.yml
+          runners:
+            - runs-on: ubuntu-latest
+              queue: "${BUILDKITE_QUEUE_VALIDATE:-linux-small}"
+
+  - label: ":pipeline: Queue flashable image build"
+    key: queue-image
+    depends_on: gha-validate
+    if: build.env("BUILD_ZERO28_IMAGE") == "1"
+    command: buildkite-agent pipeline upload .buildkite/pipeline.image.yml
+    agents:
+      queue: linux-small

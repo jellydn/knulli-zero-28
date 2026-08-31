@@ -94,14 +94,21 @@ _check_docker:
 	$(if $(DIRECT_BUILD),$(error "Not a docker environment!"))
 
 build-docker-image: _check_docker
-	$(DOCKER) build . -t $(DOCKER_REPO)/$(IMAGE_NAME)
+	@if $(DOCKER) buildx version >/dev/null 2>&1; then \
+		$(DOCKER) buildx build --load --progress=plain -t $(DOCKER_REPO)/$(IMAGE_NAME) . ; \
+	else \
+		$(DOCKER) build -t $(DOCKER_REPO)/$(IMAGE_NAME) . ; \
+	fi
+	@$(DOCKER) image inspect $(DOCKER_REPO)/$(IMAGE_NAME) >/dev/null
 	@touch .ba-docker-image-available
 
 .ba-docker-image-available: _check_docker
-	@$(DOCKER) pull $(DOCKER_REPO)/$(IMAGE_NAME)
+	@if ! $(DOCKER) image inspect $(DOCKER_REPO)/$(IMAGE_NAME) >/dev/null 2>&1; then \
+		$(MAKE) build-docker-image ; \
+	fi
 	@touch .ba-docker-image-available
 
-knulli-docker-image: $(if $(DIRECT_BUILD),,$(.ba-docker-image-available))
+knulli-docker-image: $(if $(DIRECT_BUILD),,.ba-docker-image-available)
 
 update-docker-image: _check_docker
 	-@rm .ba-docker-image-available > /dev/null

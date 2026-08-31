@@ -5,7 +5,8 @@ config BR2_PACKAGE_VAIXTERM
     depends on !BR2_STATIC_LIBS
     help
       VaixTerm is a simple terminal emulator based on SDL2.
-      
+      The package vendors libvterm 0.3.3, as used by upstream CI.
+
       https://github.com/Stanley00/vaixterm
 
 comment "vaixterm needs SDL2, toolchain w/ threads, dynamic library"
